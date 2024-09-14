@@ -32,6 +32,17 @@ public class Chatters {
 
     }
 
+    public void sendPrivateMessage(String sender, String destination, String message) throws IllegalArgumentException {
+        String messageToSend = sender + " : " + message;
+        ClientHandler client = memebers.get(destination);
+        if (client == null) {
+            throw new IllegalArgumentException("No destination with this name");
+        }
+
+        client.sendMessage(messageToSend);
+
+    }
+
     public void removeClientFromRoom(ClientHandler client) {
         memebers.remove(client.getClient().getUsername());
         chatters.remove(client);

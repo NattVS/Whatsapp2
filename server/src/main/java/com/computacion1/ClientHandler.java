@@ -49,23 +49,50 @@ public class ClientHandler implements Runnable {
         String message = new String(payload);
         // For now im just going to broadcast the message.
         if (!message.contains("CONNECT") && client.isAuthenticated()) {
-            message = this.client.getUsername() + ": " + message;
-            Main.chaters.broadCastMessage(message);
+            // TODO: handle all the voice stuff realted
+            executeChatCommand(message);
         } else {
             connect(message);
         }
     }
 
+    public void executeChatCommand(String message) {
+        String[] payload = message.split("~~");
+        if (payload.length >= 2) {
+            switch (payload[0]) {
+                case "CREATE":
+                    //TODO: CREATE THE GROUP LOGIC
+                    break;
+                case "MESSAGE":
+                    try {
+                        Main.chaters.sendPrivateMessage(client.getUsername(), payload[1], payload[2]);
+                    } catch (IllegalArgumentException e) {
+                        sendMessage("NO USER WITH THIS NAME");
+                    }
+                    break;
+
+                case "GROUP_MESSAGE":
+                    // Need to adjust the group name, so i need to do the group implementation
+                    Main.chaters.broadCastMessage(payload[2]);
+                    break;
+                default:
+                    break;
+            }
+        } else {
+            sendMessage("!INCORRECT COMMAND");
+        }
+    }
+
     public void connect(String message) {
 
-        String[] username = message.split("~~"); // The message should be CONNECT~~USERNAME
-        if (username.length != 2){
+        String[] payload = message.split("~~"); // The message should be CONNECT~~USERNAME
+        if (payload.length != 2) {
             return;
         }
-        client.setUsername(username[1]);
+        client.setUsername(payload[1]);
         try {
             Main.chaters.addClientToRoom(this);
-            System.out.println("CLIENT CONNECTED : " + username[1] + " | IP:" + client.getIP());
+            System.out.println("CLIENT CONNECTED : " + payload[1] + " | IP:" + client.getIP());
             sendMessage("ACK");
         } catch (IllegalArgumentException e) {
             sendMessage("ERROR");
