@@ -28,6 +28,21 @@ public class Main {
 
         ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
 
+        //THIS LOGIC HERE WILL JUST HANDLE THE SERVER SHUTDOWN BY ANY REASON
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            public void run() {
+                try {
+                    Thread.sleep(200);
+                    logger.info("SHUTTING DOWN SERVER, CLOSING ALL CONECTIONS");
+                    chaters.shutdown();
+                    server.close();
+                } catch (InterruptedException | IOException e) {
+                    Thread.currentThread().interrupt();
+                    e.printStackTrace();
+                }
+            }
+        });
+
         while (true) {
             Socket socket = server.accept();
             try {
