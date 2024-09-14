@@ -25,6 +25,7 @@ public class Chatters {
         if (exists == null) {
             chatters.add(client);
             memebers.put(client.getClient().getUsername(), client);
+            client.getClient().authenticate();
         } else {
             throw new IllegalArgumentException("this name is alredy in use in this chat room");
         }
@@ -49,7 +50,6 @@ public class Chatters {
     }
 
     public void broadCastMessage(String payload) {
-        System.out.println(chatters.size());
         for (ClientHandler client : chatters) {
             client.sendMessage(payload);
         }

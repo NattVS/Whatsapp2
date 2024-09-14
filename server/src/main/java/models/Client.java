@@ -5,11 +5,21 @@ public class Client {
     private String username;
     private String IP;
     private int PORT;
+    private boolean isAuthenticated;
 
     public Client(String username, String IP, int PORT) {
         this.username = username;
         this.IP = IP;
         this.PORT = PORT;
+        this.isAuthenticated = false;
+    }
+
+    public void authenticate() {
+        this.isAuthenticated = true;
+    }
+
+    public boolean isAuthenticated() {
+        return isAuthenticated;
     }
 
     public String getUsername() {

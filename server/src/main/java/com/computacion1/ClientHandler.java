@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.Arrays;
 
 import models.Client;
 
@@ -16,9 +17,9 @@ public class ClientHandler implements Runnable {
     public ClientHandler(Socket clientSocket) throws IOException {
         this.clientSocket = clientSocket;
         this.client = new Client("UNASSIGNED", clientSocket.getInetAddress().getHostAddress(), clientSocket.getPort()); // TODO:
-                                                                                                               // IMPLEMENT
-                                                                                                               // THIS
-                                                                                                               // CREATION
+        // IMPLEMENT
+        // THIS
+        // CREATION
         this.out = new PrintWriter(clientSocket.getOutputStream(), true);
     }
 
@@ -41,13 +42,13 @@ public class ClientHandler implements Runnable {
     public void sendMessage(String message) {
         new Thread(() -> {
             out.println(message);
-        });
+        }).start();
     }
 
     public void handleMessage(byte[] payload) throws IOException {
         String message = new String(payload);
         // For now im just going to broadcast the message.
-        if (!message.contains("CONNECT")) {
+        if (!message.contains("CONNECT") && client.isAuthenticated()) {
             message = this.client.getUsername() + ": " + message;
             Main.chaters.broadCastMessage(message);
         } else {
@@ -58,6 +59,9 @@ public class ClientHandler implements Runnable {
     public void connect(String message) {
 
         String[] username = message.split("~~"); // The message should be CONNECT~~USERNAME
+        if (username.length != 2){
+            return;
+        }
         client.setUsername(username[1]);
         try {
             Main.chaters.addClientToRoom(this);
@@ -76,18 +80,37 @@ public class ClientHandler implements Runnable {
     // every incoming request from the user
     @Override
     public void run() {
-        while (!clientSocket.isClosed()) {
-            InputStream is;
+        InputStream is;
+        try {
+            is = this.clientSocket.getInputStream();
+            byte[] buffer = new byte[1024];
+
+            while (!clientSocket.isClosed()) {
+                int bytesRead = is.read(buffer);
+
+                // Detect client disconnection (read() returns -1)
+                if (bytesRead == -1) {
+                    System.out.println("Client " + client.getUsername() + " disconnected.");
+                    Main.chaters.removeClientFromRoom(this); // Remove client from chat
+                    break; // Exit the loop and terminate the thread
+                }
+
+                if (bytesRead > 0) {
+                    System.out.println("message read: " + new String(buffer, 0, bytesRead));
+                    handleMessage(Arrays.copyOf(buffer, bytesRead)); // Handle only the bytes read
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error reading from client " + client.getUsername() + ": " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            // Clean up resources when the client disconnects or an error occurs
             try {
-                is = this.clientSocket.getInputStream();
-                byte[] buffer = new byte[1024];
-                is.read(buffer); // this is the action that gets blocked, since needing a new thread for each
-                                 // socket
-                System.out.println("message read");
-                handleMessage(buffer);
+                if (!clientSocket.isClosed()) {
+                    disconnect();
+                }
             } catch (IOException e) {
-                System.out.println("NOT ABLE TO READ A MESSAGE");
-                e.printStackTrace(); // TODO: HANDLE WHAT TO DO IF IM NOT HABLE TO HANDLE A MESSAGE
+                e.printStackTrace();
             }
         }
     }
