@@ -10,17 +10,22 @@ public class Chatters {
 
     private Collection<ClientHandler> chatters;
     private HashMap<String, ClientHandler> memebers; // I decided to use a hasmap to make user lookup very fast
+    private RoomsController rooms = new RoomsController();
 
     public Chatters() {
         this.chatters = Collections.synchronizedCollection(new ArrayList<>());
         memebers = new HashMap<>();
     }
 
-    public Collection<ClientHandler> getChattersRoom() {
-        return this.chatters;
+    public RoomsController getRooms() {
+        return rooms;
     }
 
-    public void addClientToRoom(ClientHandler client) throws IllegalArgumentException {
+    public ClientHandler getMemberByName(String username){
+        return memebers.get(username);
+    }
+
+    public void addClientToMainRoom(ClientHandler client) throws IllegalArgumentException {
         ClientHandler exists = memebers.get(client.getClient().getUsername());
         if (exists == null) {
             chatters.add(client);

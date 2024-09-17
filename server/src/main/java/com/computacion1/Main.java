@@ -28,7 +28,7 @@ public class Main {
 
         ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
 
-        //THIS LOGIC HERE WILL JUST HANDLE THE SERVER SHUTDOWN BY ANY REASON
+        // THIS LOGIC HERE WILL JUST HANDLE THE SERVER SHUTDOWN BY ANY REASON
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run() {
                 try {

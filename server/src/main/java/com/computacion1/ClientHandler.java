@@ -5,7 +5,9 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Arrays;
+import java.util.UUID;
 
+import models.ChatRoom;
 import models.Client;
 
 public class ClientHandler implements Runnable {
@@ -57,11 +59,12 @@ public class ClientHandler implements Runnable {
     }
 
     public void executeChatCommand(String message) {
-        String[] payload = message.split("~~");
+        String[] payload = message.split("~~"); // Depending of the message but it should be COMMAND~~MAIN
+                                                // INFO~~ADITIONAL INFO
         if (payload.length >= 2) {
             switch (payload[0]) {
                 case "CREATE":
-                    //TODO: CREATE THE GROUP LOGIC
+                    createNewRoomChat(payload);
                     break;
                 case "MESSAGE":
                     try {
@@ -72,8 +75,7 @@ public class ClientHandler implements Runnable {
                     break;
 
                 case "GROUP_MESSAGE":
-                    // Need to adjust the group name, so i need to do the group implementation
-                    Main.chaters.broadCastMessage(payload[2]);
+                    sendMessageToGroupChat(payload);
                     break;
                 default:
                     break;
@@ -81,6 +83,33 @@ public class ClientHandler implements Runnable {
         } else {
             sendMessage("!INCORRECT COMMAND");
         }
+    }
+
+    public void createNewRoomChat(String[] payload) {
+        UUID chatRoomID = client.getRoomByName(payload[1]);
+        if (chatRoomID == null) {
+            sendMessage("YOU ALREADY HAVE A ROOM WITH THIS NAME");
+            return;
+        }
+
+        // Add this user first since he created it
+        ChatRoom newRoom = Main.chaters.getRooms().createNewChatRoom(payload[1]);
+        client.subToChatRoom(newRoom.getID(), newRoom.getName());
+        newRoom.addUser(this);
+
+        String[] memebersInRoom = payload[3].split(",");
+        Main.chaters.getRooms().addMultipleUsersToRoom(newRoom, memebersInRoom);
+    }
+
+    public void sendMessageToGroupChat(String[] payload) {
+
+        UUID chatRoomID = client.getRoomByName(payload[1]);
+        if (chatRoomID == null) {
+            sendMessage("ROOM DOES NOT EXIST");
+            return;
+        }
+        ChatRoom userRoom = Main.chaters.getRooms().getRoomByID(chatRoomID);
+        userRoom.sendMessage(payload[2]);
     }
 
     public void connect(String message) {
@@ -91,7 +120,7 @@ public class ClientHandler implements Runnable {
         }
         client.setUsername(payload[1]);
         try {
-            Main.chaters.addClientToRoom(this);
+            Main.chaters.addClientToMainRoom(this);
             System.out.println("CLIENT CONNECTED : " + payload[1] + " | IP:" + client.getIP());
             sendMessage("ACK");
         } catch (IllegalArgumentException e) {
