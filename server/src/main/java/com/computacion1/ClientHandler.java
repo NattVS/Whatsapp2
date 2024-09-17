@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -63,6 +64,9 @@ public class ClientHandler implements Runnable {
                                                 // INFO~~ADITIONAL INFO
         if (payload.length >= 2) {
             switch (payload[0]) {
+                case "BROADCAST":
+                    Main.chaters.broadCastMessage(payload[1]);
+                    break;
                 case "CREATE":
                     createNewRoomChat(payload);
                     break;
@@ -87,7 +91,7 @@ public class ClientHandler implements Runnable {
 
     public void createNewRoomChat(String[] payload) {
         UUID chatRoomID = client.getRoomByName(payload[1]);
-        if (chatRoomID == null) {
+        if (chatRoomID != null) {
             sendMessage("YOU ALREADY HAVE A ROOM WITH THIS NAME");
             return;
         }
@@ -97,7 +101,7 @@ public class ClientHandler implements Runnable {
         client.subToChatRoom(newRoom.getID(), newRoom.getName());
         newRoom.addUser(this);
 
-        String[] memebersInRoom = payload[3].split(",");
+        String[] memebersInRoom = payload[2].split(",");
         Main.chaters.getRooms().addMultipleUsersToRoom(newRoom, memebersInRoom);
     }
 
