@@ -1,5 +1,7 @@
 package com.computacion1;
 
+import models.ChatRoom;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -9,7 +11,7 @@ import java.util.HashMap;
 public class Chatters {
 
     private Collection<ClientHandler> chatters;
-    private HashMap<String, ClientHandler> memebers; // I decided to use a hasmap to make user lookup very fast
+    private HashMap<String, ClientHandler> memebers; // I decided to use a hashmap to make user lookup very fast
     private RoomsController rooms = new RoomsController();
 
     public Chatters() {
@@ -32,20 +34,24 @@ public class Chatters {
             memebers.put(client.getClient().getUsername(), client);
             client.getClient().authenticate();
         } else {
-            throw new IllegalArgumentException("this name is alredy in use in this chat room");
+            throw new IllegalArgumentException("This name is already in use in this chat room.");
         }
-
     }
 
     public void sendPrivateMessage(String sender, String destination, String message) throws IllegalArgumentException {
-        String messageToSend = sender + " : " + message;
         ClientHandler client = memebers.get(destination);
         if (client == null) {
-            throw new IllegalArgumentException("No destination with this name");
+            throw new IllegalArgumentException();
         }
+        client.prepareMessage("TEXT", sender, null, message);
+    }
 
-        client.sendMessage(messageToSend);
-
+    public void sendPrivateVoiceMessage(String sender, String destination, String message) throws IllegalArgumentException {
+        ClientHandler client = memebers.get(destination);
+        if (client == null) {
+            throw new IllegalArgumentException();
+        }
+        client.prepareMessage("VOICE", sender, null, message);
     }
 
     public void removeClientFromRoom(ClientHandler client) {
