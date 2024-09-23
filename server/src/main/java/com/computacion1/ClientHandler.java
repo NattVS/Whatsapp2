@@ -3,9 +3,11 @@ import com.google.gson.Gson;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.UUID;
 
 import com.google.gson.JsonSyntaxException;
+import models.ChatMessage;
 import models.ChatRoom;
 import models.Client;
 import models.headers.HeaderServerInformation;
@@ -18,7 +20,6 @@ public class ClientHandler implements Runnable {
     private Client client;
     private PrintWriter out;
     private Gson gson;
-
     private HeaderUserMessage currentHeader;
 
     public ClientHandler(Socket clientSocket) throws IOException {
@@ -57,13 +58,16 @@ public class ClientHandler implements Runnable {
     public void handleMessage(HeaderUserMessage headerUserMessage, String messageContent) throws IOException {
         String request = headerUserMessage.getMethod();
         if (!request.equals("CONNECT") && client.isAuthenticated()) {
+            if (request.equals("DISCONNECT")){
+                disconnect();
+            }
             executeChatCommand(headerUserMessage, messageContent);
         } else {
             connect(headerUserMessage);
         }
     }
 
-    public void executeChatCommand(HeaderUserMessage data, String message) {
+    public void executeChatCommand(HeaderUserMessage data, String message) throws IOException {
 
         switch (data.getMethod()) {
             case "BROADCAST" -> Main.chaters.broadCastMessage(data.getRecipient());
@@ -71,6 +75,7 @@ public class ClientHandler implements Runnable {
             case "MESSAGE" -> {
                 try {
                     Main.chaters.sendPrivateMessage(client.getUsername(), data.getRecipient(), message);
+                    saveMessage("TEXT", message, data.getRecipient());
                     prepareMessage(200,"","Sent.");
                 } catch (IllegalArgumentException e) {
                     prepareMessage(501,"USER_NOT_FOUND","The entered username was not found. The message was not sent." );
@@ -86,9 +91,29 @@ public class ClientHandler implements Runnable {
                 }
             }
             case "GROUP_VOICE" -> sendVoiceMessageToGroup(data, message);
+            case "VIEW_HISTORY" -> viewHistory();
             default -> {
             }
         }
+    }
+
+    public void saveMessage(String type, String message, String receiver) throws IOException {
+        HistoryManager.saveMessage(client.getUsername(),client.getIP(), receiver, message, type);
+    }
+
+    public void viewHistory() {
+        ArrayList<ChatMessage> history = HistoryManager.getHistory(client.getUsername(), client.getIP());
+        StringBuilder msg = new StringBuilder("Your history of messages:");
+
+        for (ChatMessage message : history) {
+            msg.append("\n" ).append(message.getDate()).append(" | To ").append(message.getReceiver()).append(": ");
+            if (message.getType().equals("AUDIO")){
+                msg.append("Voice message");
+            } else {
+                msg.append(message.getMessage());
+            }
+        }
+        prepareMessage(200, "", msg.toString());
     }
 
     public void prepareMessage(Integer status, String error, String message){
@@ -131,13 +156,14 @@ public class ClientHandler implements Runnable {
         prepareMessage(200,"", "The chat group was successfully created!");
     }
 
-    public void sendMessageToGroupChat(HeaderUserMessage data, String message) {
+    public void sendMessageToGroupChat(HeaderUserMessage data, String message) throws IOException {
         UUID chatRoomID = client.getRoomByName(data.getRecipient());
         if (chatRoomID == null) {
             prepareMessage(501,"GROUP_NOT_FOUND", "The entered group was not found. The message was not sent.");
             return;
         }
         ChatRoom userRoom = Main.chaters.getRooms().getRoomByID(chatRoomID);
+        saveMessage("TEXT", message, data.getRecipient());
         prepareMessage("TEXT", client.getUsername(), userRoom, message);
     }
 
@@ -156,13 +182,19 @@ public class ClientHandler implements Runnable {
         try {
             Main.chaters.addClientToMainRoom(this);
             System.out.println("CLIENT CONNECTED : " + data.getRecipient() + " | IP:" + client.getIP());
+            //Create the history file of the user
+            HistoryManager.createUserHistoryFile(client.getUsername(), client.getIP());
             prepareMessage(200,"","Successfully connected. Start typing your commands...");
         } catch (IllegalArgumentException e) {
             prepareMessage(501, "USERNAME_IN_USE", "The username you have entered is already in use. Connection not established");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
     public void disconnect() throws IOException {
+        System.out.println("Client " + client.getUsername() + " disconnected.");
+        Main.chaters.removeClientFromRoom(this);
         this.clientSocket.close();
     }
 
@@ -180,8 +212,7 @@ public class ClientHandler implements Runnable {
 
                 // Detect client disconnection (read() returns -1)
                 if (bytesRead == -1) {
-                    System.out.println("Client " + client.getUsername() + " disconnected.");
-                    Main.chaters.removeClientFromRoom(this); // Remove client from chat
+                    disconnect();
                     break; // Exit the loop and terminate the thread
                 }
 
@@ -189,7 +220,8 @@ public class ClientHandler implements Runnable {
                     String receivedMessage = new String(buffer, 0, bytesRead).trim();
                     try {
                         currentHeader = gson.fromJson(receivedMessage, HeaderUserMessage.class);
-                        if (currentHeader.getMethod().equals("CONNECT")){
+                        String method = currentHeader.getMethod();
+                        if (method.equals("CONNECT") | method.equals("VIEW_HISTORY") | method.equals("DISCONNECT")){
                             handleMessage(currentHeader, "");
                         }
                     } catch (JsonSyntaxException e) {

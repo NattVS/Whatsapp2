@@ -29,7 +29,7 @@ public class VoiceMessageRecorder implements Runnable {
 
             line.open(format);
             line.start(); // Iniciar captura de audio
-            System.out.println("Capturando audio... "+duration+" segundos");
+            System.out.println("Recording audio... "+duration+" seconds");
 
             byte[] buffer = new byte[line.getBufferSize() / 5];
             long startTime = System.currentTimeMillis();

@@ -1,5 +1,7 @@
 package com.computacion1.clients;
 
+import com.computacion1.audio.AudioRecorderMain;
+import com.computacion1.audio.VoiceMessagePlayer;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import models.headers.HeaderServer;
@@ -7,11 +9,13 @@ import models.headers.HeaderServerInformation;
 import models.headers.HeaderServerMessage;
 import models.headers.HeaderUserMessage;
 
+import javax.sound.sampled.AudioFormat;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.Base64;
 
 public class ChatClient2 {
     private static final String SERVER_ADDRESS = "localhost";
@@ -25,10 +29,9 @@ public class ChatClient2 {
              BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
              BufferedReader userInput = new BufferedReader(new InputStreamReader(System.in))) {
 
-
             System.out.print("Enter your username: ");
             String username = userInput.readLine();
-            sendConnectMessage(out, username);
+            sendConnectMessage(out, username, "CONNECT");
 
             new Thread(() -> {
                 String response;
@@ -50,7 +53,12 @@ public class ChatClient2 {
             }).start();
 
             String message;
-            while (!(message = userInput.readLine()).equalsIgnoreCase("exit")) {
+            while (true) {
+                message = userInput.readLine();
+                if (message.equalsIgnoreCase("exit")) {
+                    sendConnectMessage(out,null,"DISCONNECT");
+                    break;
+                }
                 sendMessage(out, message);
             }
 
@@ -61,10 +69,11 @@ public class ChatClient2 {
 
     private static void handleServerResponse(HeaderServer header, String response){
         if (header instanceof HeaderServerInformation headerInfo){
+            System.out.print("Server: ");
             if (headerInfo.getStatus().equals(200)){
                 System.out.println(response);
             } else {
-                System.out.println("Server: ERROR " + headerInfo.getError() + "/" + response);
+                System.out.println("ERROR " + headerInfo.getError() + "/" + response);
             }
         } else if (header instanceof HeaderServerMessage headerMsg){
             if (headerMsg.getType().equals("TEXT")){
@@ -75,31 +84,13 @@ public class ChatClient2 {
                 System.out.println(msg + headerMsg.getSender() + ": " + response);
             } else if (headerMsg.getType().equals("VOICE")){
                 System.out.println("Voice message from " + headerMsg.getSender());
-                System.out.println("Do you want to listen it? type Y (yes) or N (No)");
-                try {
-                    BufferedReader userInput = new BufferedReader(new InputStreamReader(System.in));
-                    String userResponse = userInput.readLine().trim().toUpperCase();
-                    if (userResponse.equals("Y")) {
-                        reproduceVoiceMessage(response);
-                    } else if (userResponse.equals("N")) {
-                        System.out.println("Voice message discarded.");
-                    } else {
-                        System.out.println("Invalid input. Please type Y or N.");
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-
+                //playVoiceMessage(response);
             }
         }
     }
 
-    private static void reproduceVoiceMessage(String message){
-
-    }
-
-    private static void sendConnectMessage(PrintWriter out, String username) {
-        HeaderUserMessage headerUserMessage = new HeaderUserMessage(null, "CONNECT",username);
+    private static void sendConnectMessage(PrintWriter out, String username, String method) {
+        HeaderUserMessage headerUserMessage = new HeaderUserMessage(null, method,username);
         String connectMessage = gson.toJson(headerUserMessage);
         out.println(connectMessage);
     }
@@ -111,20 +102,54 @@ public class ChatClient2 {
         String[] parts = message.split("~~");
         String method = parts[0];
 
-        String type = null;
+        String type = "TEXT";
+        HeaderUserMessage headerUserMessage;
+        String jsonMessage;
 
-        if (method.equals("MESSAGE") | method.equals("GROUP_MESSAGE")){
-            type = "TEXT";
-        } else if (!method.equals("CREATE")){
+        if (method.equals("VOICE") | method.equals("GROUP_VOICE")){
+            parts [2] = recordVoiceMessage();
             type = "VOICE";
+        } else if (method.equals("VIEW_HISTORY")){
+            headerUserMessage = new HeaderUserMessage(type,method,null);
+            jsonMessage = gson.toJson(headerUserMessage);
+            out.println(jsonMessage);
         }
 
-        //SENDING HEADER
-        HeaderUserMessage headerUserMessage = new HeaderUserMessage(type, method,parts[1]);
-        String jsonMessage = gson.toJson(headerUserMessage);
-        out.println(jsonMessage);
+        if (!method.equals("VIEW_HISTORY")){
+            headerUserMessage = new HeaderUserMessage(type, method,parts[1]);
+            jsonMessage = gson.toJson(headerUserMessage);
+            out.println(jsonMessage);
 
-        //SENDING MESSAGE
-        out.println(parts[2]);
+            //SENDING MESSAGE
+            out.println(parts[2]);
+        }
+    }
+
+    //Not working
+    private void x(){
+        try {
+            BufferedReader userInput = new BufferedReader(new InputStreamReader(System.in));
+            String userResponse = userInput.readLine().trim().toUpperCase();
+            if (userResponse.equals("Y")) {
+                //playVoiceMessage(response);
+            } else if (userResponse.equals("N")) {
+                System.out.println("Voice message discarded.");
+            } else {
+                System.out.println("Invalid input. Please type Y or N.");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static String recordVoiceMessage() {
+        byte[] audioData = AudioRecorderMain.recordAudio(5);
+        return java.util.Base64.getEncoder().encodeToString(audioData);
+    }
+
+    private static void playVoiceMessage(String response){
+        byte[] decodedAudio = Base64.getDecoder().decode(response);
+        VoiceMessagePlayer player = new VoiceMessagePlayer(new AudioFormat(16000, 16, 1, true, true));
+        player.initAudio(decodedAudio);
     }
 }

@@ -1,0 +1,8 @@
+CREATE~~Group~~User1,User2
+MESSAGE~~User~~xxxx
+GROUP_MESSAGE~~Group~~xxxx
+GROUP_MESSAGE~~Group~~xxxx
+VOICE~~User~~xxxx
+GROUP_VOICE~~Group~~xxxx
+GROUP_VOICE~~Group~~xxxx
+VIEW_HISTORY
