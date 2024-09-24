@@ -1,1 +1,1 @@
-[]
+[{"sender":"User2","receiver":"User1","message":"Hola","type":"TEXT","date":"2024-09-23 15:57:38"},{"sender":"User2","receiver":"User3","message":"Hola user3","type":"TEXT","date":"2024-09-23 16:46:48"},{"sender":"User2","receiver":"Group1","message":"Hola grupo","type":"TEXT","date":"2024-09-23 16:48:21"}]

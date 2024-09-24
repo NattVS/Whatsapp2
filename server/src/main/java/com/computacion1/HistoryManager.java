@@ -31,7 +31,7 @@ public class HistoryManager {
 
     public static void saveMessage(String username, String userIP, String receiver, String content, String type) throws IOException {
         ChatMessage message = new ChatMessage(username, receiver, content, type);
-        String filename = username + "_" + userIP.replace(".", "_") + "_history.json";
+        String filename = HISTORY_FOLDER + username + "_" + userIP.replace(".", "_") + "_history.json";
         ArrayList<ChatMessage> history = getHistory(username, userIP);
         history.add(message);
         String json = gson.toJson(history);
@@ -43,7 +43,7 @@ public class HistoryManager {
     }
 
     public static ArrayList<ChatMessage> getHistory(String username, String userIP) {
-        String filename = username + "_" + userIP.replace(".", "_") + "_history.json";
+        String filename = HISTORY_FOLDER + username + "_" + userIP.replace(".", "_") + "_history.json";
         ArrayList<ChatMessage> chatMessages = new ArrayList<>();
 
         try (FileInputStream fs = new FileInputStream(filename);
